@@ -1,21 +1,22 @@
 {
-  "name": "ip-tag",
+  "name": "nsca",
   "types": ["module"],
   "version": "1.4",
-  "homepage": "http://github.com/shinken-monitoring/mod-ip-tag",
+  "homepage": "http://github.com/shinken-monitoring/mod-nsca",
   "author": "Jean Gabès",
-  "description": "Tag host by their IP ranges",
+  "description": "Receive check results sent from send_nsca",
   "contributors": [
     {
       "name": "Jean Gabès",
       "email": "naparuba@gmail.com"
     }
   ],
-  "repository": "https://github.com/shinken-monitoring/mod-ip-tag",
+  "repository": "https://github.com/shinken-monitoring/mod-nsca",
   "keywords": [
     "module",
     "arbiter",
-    "ip"
+    "receiver",
+    "nsca"
   ],
   "dependencies": {
     "shinken": ">=1.4"
