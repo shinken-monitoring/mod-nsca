@@ -56,54 +56,23 @@ def get_instance(plugin):
     """ Return a module instance for the plugin manager """
     logger.info("Get a NSCA arbiter module for plugin %s" % plugin.get_name())
 
-    if hasattr(plugin, 'host'):
-        if plugin.host == '*':
-            host = ''
-        else:
-            host = plugin.host
-    else:
-        host = '127.0.0.1'
+    host = getattr(plugin, 'host', '127.0.0.1')
+    if host == '*':
+        host = ''
+    
+    port = int(getattr(plugin, 'port', '5667'))
+    buffer_length = int(getattr(plugin, 'buffer_length', '4096'))
+    payload_length = int(getattr(plugin, 'payload_length', '-1'))
+    encryption_method = int(getattr(plugin, 'encryption_method', '0'))
 
-    if hasattr(plugin, 'port'):
-        port = int(plugin.port)
-    else:
-        port = 5667
-
-    if hasattr(plugin, 'buffer_length'):
-        buffer_length = int(plugin.buffer_length)
-    else:
-        buffer_length = 4096
-
-    if hasattr(plugin, 'payload_length'):
-        payload_length = int(plugin.payload_length)
-    else:
-        payload_length = -1
-
-    if hasattr(plugin, 'encryption_method'):
-        encryption_method = int(plugin.encryption_method)
-    else:
-        encryption_method = 0
-
-    if hasattr(plugin, 'password'):
-        password = plugin.password
-    else:
-        password = ""
-
+    password = getattr(plugin, 'password', '')
     if password == "" and encryption_method != 0:
         logger.error("[NSCA] No password specified whereas there is a encryption_method defined")
         logger.warning("[NSCA] Setting password to dummy to avoid crash!")
         password = "dummy"
 
-    if hasattr(plugin, 'max_packet_age'):
-        max_packet_age = min(plugin.max_packet_age, 900)
-    else:
-        max_packet_age = 30
-    
-    if hasattr(plugin, 'check_future_packet'):
-        check_future_packet = bool(plugin.check_future_packet)
-    else:
-        check_future_packet = True
-
+    max_packet_age = min(int(getattr(plugin, 'max_packet_age', '30')), 900)
+    check_future_packet = bool(getattr(plugin, 'check_future_packet', 'False'))
 
     instance = NSCA_arbiter(plugin, host, port,
             buffer_length, payload_length, encryption_method, password, max_packet_age, check_future_packet)
@@ -124,7 +93,7 @@ class NSCA_arbiter(BaseModule):
         self.rng = random.Random(password)
         self.max_packet_age = max_packet_age
         self.check_future_packet = check_future_packet 
-        logger.info("[NSCA] configuration: %s (%s), payload length: %s, encryption: %s, max age: %s, check future: %s" % (self.host, self.port, self.payload_length, self.encryption_method, self.max_packet_age, self.check_future_packet))
+        logger.info("[NSCA] configuration, allowed hosts : '%s'(%s), buffer length: %s, payload length: %s, encryption: %s, max packet age: %s, check future packet: %s" % (self.host, self.port, self.buffer_length, self.payload_length, self.encryption_method, self.max_packet_age, self.check_future_packet))
 
     def send_init_packet(self, sock):
         '''
