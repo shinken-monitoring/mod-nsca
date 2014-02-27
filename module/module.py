@@ -69,6 +69,16 @@ def get_instance(plugin):
     else:
         port = 5667
 
+    if hasattr(plugin, 'buffer_length'):
+        buffer_length = int(plugin.buffer_length)
+    else:
+        buffer_length = 4096
+
+    if hasattr(plugin, 'payload_length'):
+        payload_length = int(plugin.payload_length)
+    else:
+        payload_length = -1
+
     if hasattr(plugin, 'encryption_method'):
         encryption_method = int(plugin.encryption_method)
     else:
@@ -96,22 +106,25 @@ def get_instance(plugin):
 
 
     instance = NSCA_arbiter(plugin, host, port,
-            encryption_method, password, max_packet_age, check_future_packet)
+            buffer_length, payload_length, encryption_method, password, max_packet_age, check_future_packet)
     return instance
 
 
 class NSCA_arbiter(BaseModule):
     """Please Add a Docstring to describe the class here"""
 
-    def __init__(self, modconf, host, port, encryption_method, password, max_packet_age, check_future_packet):
+    def __init__(self, modconf, host, port, buffer_length, payload_length, encryption_method, password, max_packet_age, check_future_packet):
         BaseModule.__init__(self, modconf)
         self.host = host
         self.port = port
+        self.buffer_length = buffer_length
+        self.payload_length = payload_length
         self.encryption_method = encryption_method
         self.password = password
         self.rng = random.Random(password)
         self.max_packet_age = max_packet_age
         self.check_future_packet = check_future_packet 
+        logger.info("[NSCA] configuration: %s (%s), payload length: %s, encryption: %s, max age: %s, check future: %s" % (self.host, self.port, self.payload_length, self.encryption_method, self.max_packet_age, self.check_future_packet))
 
     def send_init_packet(self, sock):
         '''
@@ -124,26 +137,23 @@ class NSCA_arbiter(BaseModule):
         sock.send(init_packet)
         return iv
 
-    def read_check_result(self, data, iv):
+    def read_check_result(self, data, iv, payload_length):
         '''
         Read the check result
 
         The !hhIIh64s128s512sh is the description of the packet.
         See Python doc for details. This is equivalent to the figure below
 
-        00-01      Version           02-03 Padding
-        04-07      CRC32
-        08-11      Timestamp
-        12-13      Return Code       14-15 Hostname
-        16-75      Hostname
-        76-77      Hostname           78-79 Service name
-        80-203     Service name
-        204-205 Service name      206-207 Service output
-        208-715 Service output
-        716-717 Service output    718-719 Padding
+        00-01       Version
+        02-03       Padding
+        04-07       CRC32
+        08-11       Timestamp
+        12-13       Return Code
+        14-77       Hostname
+        78-205      Service name
+        206-717     Service output (512 or 4096 bytes)
+        718-719     Padding
         '''
-        if len(data) != 720:
-            return None
 
         if self.encryption_method == 1:
             data = decrypt_xor(data, self.password)
@@ -151,11 +161,14 @@ class NSCA_arbiter(BaseModule):
 
         # version, pad1, crc32, timestamp, rc, hostname_dirty, service_dirty, output_dirty, pad2
         # are the name of var if needed later
+        unpackFormat = "!hhIIh64s128s%ssh" % payload_length
+        
         (_, _, _, timestamp, rc, hostname_dirty, service_dirty, output_dirty, _) = \
-            struct.unpack("!hhIIh64s128s512sh", data)
+            struct.unpack(unpackFormat, data)
         hostname = hostname_dirty.split("\0", 1)[0]
         service = service_dirty.split("\0", 1)[0]
         output = output_dirty.split("\0", 1)[0]
+        logger.debug("[NSCA] read_check_result : host is %s (%s), output : %s" % (hostname, service, output))
         return (timestamp, rc, hostname, service, output)
 
     def post_command(self, timestamp, rc, hostname, service, output):
@@ -169,11 +182,17 @@ class NSCA_arbiter(BaseModule):
             extcmd = "[%lu] PROCESS_SERVICE_CHECK_RESULT;%s;%s;%d;%s\n" % \
                 (timestamp, hostname, service, rc, output)
 
+        logger.debug("[NSCA] command : %s" % (extcmd))
         e = ExternalCommand(extcmd)
         self.from_q.put(e)
 
     def process_check_result(self, databuffer, IV):
-        (timestamp, rc, hostname, service, output) = self.read_check_result(databuffer, IV)
+        payload_length = len(databuffer) - 208
+        if self.payload_length != -1 and payload_length != self.payload_length:
+            logger.info("[NSCA] Dropping packet with incorrect payload length.")
+            return
+            
+        (timestamp, rc, hostname, service, output) = self.read_check_result(databuffer, IV, payload_length)
         current_time = time.time()
         check_result_age = current_time - timestamp
         if timestamp > current_time and self.check_future_packet:
@@ -191,7 +210,6 @@ class NSCA_arbiter(BaseModule):
 
         self.set_exit_handler()
         backlog = 5
-        size = 8192
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setblocking(0)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -215,7 +233,7 @@ class NSCA_arbiter(BaseModule):
                 else:
                     # handle all other sockets
                     try:
-                        data = s.recv(size)
+                        data = s.recv(self.buffer_length)
                     except:
                         continue
                     if len(data) == 0:
@@ -232,7 +250,14 @@ class NSCA_arbiter(BaseModule):
                         databuffer[s] += data
                     else:
                         databuffer[s] = data
-                    while len(databuffer[s]) >= 720:
+                        
+                    self.process_check_result(databuffer[s], IVs[s])
+                    databuffer[s] = databuffer[s][len(databuffer[s]):]
+                    # continue
+                    
+#                    logger.info("[NSCA] new len(databuffer) : %d" % (len(databuffer[s])))
+#                    message_length = self.payload_length + 208
+#                    while len(databuffer[s]) >= message_length:
                         # end-of-transmission or an empty line was received
-                        self.process_check_result(databuffer[s][0:720], IVs[s])
-                        databuffer[s] = databuffer[s][720:]
+#                        self.process_check_result(databuffer[s][0:message_length], IVs[s])
+#                        databuffer[s] = databuffer[s][message_length:]
