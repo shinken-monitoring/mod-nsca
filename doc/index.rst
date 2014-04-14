@@ -19,7 +19,7 @@ In your shinken-specific.cfg file, just add (or uncomment):
   #You can send check result to Shinken using NSCA
   #using send_nsca command
   define module{
-       module_name       NSCA
+       module_name       nsca
        module_type       nsca_server
        host              *
        port              5667
@@ -31,7 +31,7 @@ In your shinken-specific.cfg file, just add (or uncomment):
        receiver_name    receiver-1
        address          localhost
        port             7773
-       modules          NSCA
+       modules          nsca
   
        timeout          3             ; 'ping' timeout
        data_timeout     120           ; 'data send' timeout
@@ -71,6 +71,6 @@ To configure the NSCA module in your Arbiter instead of Receiver. Add the NSCA m
        address          localhost                   ;IP or DNS adress
        port             7770
        spare            0
-       modules           NSCA
+       modules          nsca
   }
   
