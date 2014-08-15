@@ -1,7 +1,7 @@
 {
   "name": "nsca",
   "types": ["module"],
-  "version": "1.4",
+  "version": "1.4.1",
   "homepage": "http://github.com/shinken-monitoring/mod-nsca",
   "author": "Jean Gabès",
   "description": "Receive check results sent from send_nsca",
