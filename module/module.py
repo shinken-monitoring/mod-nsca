@@ -255,7 +255,3 @@ class NSCA_arbiter(BaseModule):
                         s.close()
                         input.remove(s)
                         continue
-                    if s in databuffer:
-                        databuffer[s] += data
-                    else:
-                        databuffer[s] = data
