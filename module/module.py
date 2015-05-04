@@ -59,7 +59,7 @@ def get_instance(plugin):
     host = getattr(plugin, 'host', '127.0.0.1')
     if host == '*':
         host = ''
-    
+
     port = int(getattr(plugin, 'port', '5667'))
     buffer_length = int(getattr(plugin, 'buffer_length', '4096'))
     payload_length = int(getattr(plugin, 'payload_length', '-1'))
@@ -92,7 +92,7 @@ class NSCA_arbiter(BaseModule):
         self.password = password
         self.rng = random.Random(password)
         self.max_packet_age = max_packet_age
-        self.check_future_packet = check_future_packet 
+        self.check_future_packet = check_future_packet
         logger.info("[NSCA] configuration, allowed hosts : '%s'(%s), buffer length: %s, payload length: %s, encryption: %s, max packet age: %s, check future packet: %s" % (self.host, self.port, self.buffer_length, self.payload_length, self.encryption_method, self.max_packet_age, self.check_future_packet))
 
     def send_init_packet(self, sock):
@@ -122,7 +122,7 @@ class NSCA_arbiter(BaseModule):
         78-205      Service name
         206-717     Plugin output (512 or 4096 bytes)
         718-719     Padding
-        
+
         nsca.c (last version as of 2014-07)
         #define MAX_HOSTNAME_LENGTH	64
         #define MAX_DESCRIPTION_LENGTH	128
@@ -157,14 +157,14 @@ class NSCA_arbiter(BaseModule):
         # version, pad1, crc32, timestamp, rc, hostname_dirty, service_dirty, output_dirty, pad2
         # are the name of var if needed later
         unpackFormat = "!hhIIh64s128s%ssh" % payload_length
-        
+
         (version, pad, crc32, timestamp, rc, hostname_dirty, service_dirty, output_dirty, _) = \
             struct.unpack(unpackFormat, data)
-            
+
         if version != 3:
             logger.debug("[NSCA] Packet version is not known: %d.", version)
             return (0, 0, '', '', '')
-            
+
         hostname = hostname_dirty.split("\0", 1)[0]
         service = service_dirty.split("\0", 1)[0]
         output = output_dirty.split("\0", 1)[0]
@@ -191,12 +191,12 @@ class NSCA_arbiter(BaseModule):
         if len(databuffer) < 720:
             logger.debug("[NSCA] Dropping packet with incorrect payload length: %d.", len(databuffer))
             return
-        
+
         (timestamp, rc, hostname, service, output) = self.read_check_result(databuffer, IV, len(databuffer)-208)
         if timestamp == 0:
             logger.debug("[NSCA] Dropping packet with incorrect protocol version.")
             return
-            
+
         current_time = time.time()
         check_result_age = current_time - timestamp
         if timestamp > current_time and self.check_future_packet:
@@ -238,9 +238,14 @@ class NSCA_arbiter(BaseModule):
                     # handle all other sockets
                     try:
                         data = s.recv(self.buffer_length)
+                        if s in databuffer:
+                            databuffer[s] += data
+                        else:
+                            databuffer[s] = data
                     except:
                         continue
                     if len(data) == 0:
+                        self.process_check_result(databuffer[s], IVs[s])
                         try:
                             # Closed socket
                             del databuffer[s]
@@ -250,11 +255,3 @@ class NSCA_arbiter(BaseModule):
                         s.close()
                         input.remove(s)
                         continue
-                    if s in databuffer:
-                        databuffer[s] += data
-                    else:
-                        databuffer[s] = data
-                        
-                    # logger.debug("[NSCA] Received packet, length: %d." % len(databuffer[s]))
-                    self.process_check_result(databuffer[s], IVs[s])
-                    databuffer[s] = databuffer[s][len(databuffer[s]):]
