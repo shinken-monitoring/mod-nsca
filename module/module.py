@@ -168,7 +168,7 @@ class NSCA_arbiter(BaseModule):
         hostname = hostname_dirty.split("\0", 1)[0]
         service = service_dirty.split("\0", 1)[0]
         output = output_dirty.split("\0", 1)[0]
-        logger.info("[NSCA] packet: version %s, pad: %s, crc32: %s, host/service: %s/%s, rc: %d, output: %s" % (version, pad, crc32, hostname, service, rc, output))
+        logger.debug("[NSCA] packet: version %s, pad: %s, crc32: %s, host/service: %s/%s, rc: %d, output: %s" % (version, pad, crc32, hostname, service, rc, output))
         return (timestamp, rc, hostname, service, output)
 
     def post_command(self, timestamp, rc, hostname, service, output):
