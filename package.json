@@ -1,7 +1,7 @@
 {
   "name": "nsca",
   "types": ["module"],
-  "version": "1.4.1",
+  "version": "1.4.2",
   "homepage": "http://github.com/shinken-monitoring/mod-nsca",
   "author": "Jean Gabès",
   "description": "Receive check results sent from send_nsca",
@@ -9,6 +9,14 @@
     {
       "name": "Jean Gabès",
       "email": "naparuba@gmail.com"
+    },
+    {
+      "name": "David Durieux",
+      "email": "d.durieux@siprossii.com"
+    },
+    {
+      "name": "Frédéric Mohier",
+      "email": "frederic.mohier@gmail.com"
     }
   ],
   "repository": "https://github.com/shinken-monitoring/mod-nsca",
