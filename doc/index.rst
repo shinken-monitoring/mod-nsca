@@ -23,11 +23,7 @@ To append the NSCA module to the Shinken receiver daemon, simply add (or uncomme
       port            7773
       spare           0
 
-      ## Optional parameters
-      timeout             3   ; Ping timeout
-      data_timeout        120 ; Data send timeout
-      max_check_attempts  3   ; If ping fails N or more, then the node is dead
-      check_interval      60  ; Ping node every N seconds
+      ...
 
       ## Modules for Receiver
       # - named-pipe             = Open the named pipe nagios.cmd
@@ -36,17 +32,6 @@ To append the NSCA module to the Shinken receiver daemon, simply add (or uncomme
       # - ws-arbiter              = WebService for pushing results to the arbiter
       # - Collectd                = Receive collectd perfdata
       modules	nsca
-
-      # Enable https or not
-      use_ssl	          0
-      # enable certificate/hostname check, will avoid man in the middle attacks
-      hard_ssl_name_check  0
-      
-      ## Advanced Feature
-      direct_routing      0   ; If enabled, it will directly send commands to the
-                              ; schedulers if it know about the hostname in the
-                              ; command.
-      realm   All
   }
   
 This daemon is totally optional. Its main goal is to get all passive "things" (checks but why not other commands) in distant realms. 
@@ -80,48 +65,56 @@ To configure the NSCA module in your Arbiter instead of Receiver, add the NSCA m
 
 The NSCA module configuration is defined in the module configuration file: nsca.cfg.
 
-Default configuration is convenient for 'recent' NSCA client implementing NSCA version 3. This configuration 
-has been tested with Linux send_nsca 2.9.1 and with Windows NSClient versions 0.4.1 and 0.4.2.
+Default configuration is convenient for 'recent' NSCA client implementing NSCA version 3. 
+
+This configuration has been tested with Linux send_nsca 2.9.1 and Windows NSClient 
+versions 0.4.1 and 0.4.2.
+
+The XOR encryption has been tested with Windows NSCLient.
 
 .. note::  Received NSCA packets which are not containing version 3 information are dropped by the module!
 
 
 ::
 
-  ## Module:      nsca
-  ## Loaded by:   Arbiter, Receiver
-  # Receive check results sent with NSCA protocol.
-  define module {
-    module_name			nsca
-    module_type			nsca_server
-    
-    # Default is listening on all address, TCP port 5667
-    host				      *
-    port				      5667
-    
-    # Encryption method:
-    # 0 for no encryption (default)
-    # 1 for simple Xor
-    # No other encryption method available!
-    encryption_method   0
-    password			      helloworld
-    
-    # Maximum packet age defines the maximum delay
-    # (in seconds) for a packet to be considered as staled
-    max_packet_age		  60
-    
-    # If check_future_packet attribute is defined, packets
-    # more recent than current timestamp are dropped
-    check_future_packet 
-    
-    # Payload length is length of effective data sent :
-    # . -1 to accept any payload length
-    # . 512 or 4096 depending upon NSCA client configuration
-    # If packet payload is not the right size, packet is dropped
-    payload_length		-1
-    
-    # Buffer length is maximum length of received data :
-    # should be greater than payload length
-    # Default is 8192
-    buffer_length		  8192
-  }
+    ## Module:      nsca
+    ## Loaded by:   Arbiter, Receiver
+    # Receive check results sent with NSCA protocol.
+    define module {
+        module_name             nsca
+        module_type             nsca_server
+      
+      # Default is listening on all address, TCP port 5667
+        host                    *
+        port                    5667
+      
+        # Encryption method:
+        # 0 for no encryption (default)
+        # 1 for simple Xor
+        # No other encryption method available!
+        encryption_method       0
+        password                helloworld
+      
+        # Maximum packet age defines the maximum delay
+        # (in seconds) for a packet to be considered as staled
+        max_packet_age          60
+      
+        # If check_future_packet attribute is defined, packets
+        # more recent than current timestamp are dropped
+        check_future_packet     1
+      
+        # Payload length is length of effective data sent :
+        # . -1 to accept any payload length
+        # . 512 or 4096 depending upon NSCA client configuration
+        # If packet payload is not the right size, packet is dropped
+        payload_length          -1
+      
+        # Buffer length is maximum length of received data :
+        # should be greater than payload length
+        # Default is 8192
+        #buffer_length           8192
+      
+        # backlog is the maximum number of concurrent sockets
+        # Default is 10
+        #backlog                 10
+    }
