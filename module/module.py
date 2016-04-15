@@ -77,7 +77,7 @@ def get_instance(plugin):
         password = "dummy"
 
     max_packet_age = min(int(getattr(plugin, 'max_packet_age', '30')), 900)
-    check_future_packet = bool(getattr(plugin, 'check_future_packet', 'False'))
+    check_future_packet = bool(getattr(plugin, 'check_future_packet', 0))
 
     instance = NSCA_arbiter(plugin, host, port,
             buffer_length, payload_length, encryption_method, password, max_packet_age, check_future_packet,
@@ -215,7 +215,7 @@ class NSCA_arbiter(BaseModule):
         current_time = time.time()
         check_result_age = current_time - timestamp
         if timestamp > current_time and self.check_future_packet:
-            logger.info("[NSCA] Dropping packet with future timestamp.")
+            logger.warning("[NSCA] Dropping packet with future timestamp.")
         elif check_result_age > self.max_packet_age:
             logger.info(
                 "[NSCA] Dropping packet with stale timestamp - packet was %s seconds old. Timestamp: %s for %s/%s" % \
