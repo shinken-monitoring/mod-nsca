@@ -1,10 +1,10 @@
 {
   "name": "nsca",
   "types": ["module"],
-  "version": "1.4.2",
+  "version": "1.4.3",
   "homepage": "http://github.com/shinken-monitoring/mod-nsca",
   "author": "David Durieux",
-  "description": "Receive check results sent from send_nsca",
+  "description": "Receive check results sent from send_nsca, version 1.4.3",
   "contributors": [
     {
       "name": "Jean Gabès",
